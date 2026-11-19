@@ -1,0 +1,8 @@
+build/
+dist/
+debian/
+*.o
+*.a
+*.so
+*.deb
+.vscode/
