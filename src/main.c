@@ -9,6 +9,9 @@
 #define APP_VERSION "unknown"
 #endif
 
+#define DEFAULT_CONFIG_PATH "/etc/trrispo25/trrispo25.conf"
+#define DEFAULT_LEVEL 3
+
 //Справка
 static void print_usage(FILE *out, const char *prog) {
     fprintf(out,
