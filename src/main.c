@@ -108,17 +108,37 @@ static int write_file(const char *path, const void *data, size_t size) {
     return 0;
 }
 
+//Конфигурация
 
-//
+
+//Доп.команды
+
+
+//Аргументы доп.команд
+
+
+//Вход
 int main(int argc, char **argv) {
-    if (argc == 2 && strcmp(argv[1], "--version") == 0) {
+    if (argc < 2) {
+        print_usage(stderr, argv[0]);
+        return 1;
+    }
+
+    const char *cmd = argv[1];
+
+    if (strcmp(cmd, "--help") == 0 || strcmp(cmd, "-h") == 0) {
+        print_usage(stdout, argv[0]);
+        return 0;
+    }
+    if (strcmp(cmd, "--version") == 0) {
         printf("trrispo25 %s\n", APP_VERSION);
         return 0;
     }
-    if (argc == 2 && strcmp(argv[1], "--help") == 0) {
-        printf("Usage: trrispo25 --help | --version\n");
-        return 0;
-    }
-    fprintf(stderr, "Use --help\n");
+
+//Место под compress
+//Место под бенчмарк
+
+    fprintf(stderr, "trrispo25: unknown command '%s'\n", cmd);
+    print_usage(stderr, argv[0]);
     return 1;
 }
