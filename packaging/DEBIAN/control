@@ -1,0 +1,10 @@
+Package: trrispo25
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: @ARCH@
+Depends: @DEPENDS@
+Maintainer: IsiyoJ <buzz071@gmail.com>
+Description: Zstd compression level benchmark
+ Compresses files with zstd at a given level and prints a table
+ of compression level, output size and elapsed time.

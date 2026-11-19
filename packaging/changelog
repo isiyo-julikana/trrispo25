@@ -1,0 +1,7 @@
+trrispo25 (0.1.0) unstable; urgency=low
+
+  * Initial release: zstd compression at a given level and
+    level/size/time benchmark table.
+
+ -- Isiyo Julikana <buzz071@gmail.com>  Wed, 19 Nov 2025 12:00:00 +0300
+
