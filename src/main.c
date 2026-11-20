@@ -164,7 +164,7 @@ static int cmd_compress(const char *input, int level, const char *output) {
 
     int rc = core_compress_buffer(src, data_size, level,
                                   &cdata, &cdata_size, &elapsed_ns);
-    free(data);
+    
     if (rc != 0) {
         fprintf(stderr,
                 "trrispo25: compression failed (level %d, rc=%d)\n",
@@ -172,8 +172,6 @@ static int cmd_compress(const char *input, int level, const char *output) {
         return 1;
     }
 
-    }
-    free(cdata);
 
     printf("%s -> %s: %zu -> %zu bytes (level %d, %.2f ms)\n",
            input, output, data_size, cdata_size, level,
