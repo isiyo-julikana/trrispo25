@@ -172,9 +172,6 @@ static int cmd_compress(const char *input, int level, const char *output) {
         return 1;
     }
 
-    if (write_file(output, cdata, cdata_size) != 0) {
-        free(cdata);
-        return 1;
     }
     free(cdata);
 
