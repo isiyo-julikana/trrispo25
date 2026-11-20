@@ -4,3 +4,5 @@ pkgconf
 libzstd-dev
 dpkg-dev
 lintian
+gcovr
+cppcheck
