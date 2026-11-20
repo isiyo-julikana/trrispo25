@@ -1,0 +1,101 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          xargs -a build-deps.txt sudo apt-get install -y
+          sudo apt-get install -y cppcheck
+      - name: Configure (Release, -Werror)
+        run: cmake -S . -B build -DCMAKE_C_FLAGS=-Werror -DBUILD_TESTING=OFF
+      - name: Build
+        run: cmake --build build
+      - name: cppcheck
+        run: cppcheck --enable=warning,style,performance --error-exitcode=1 -q src
+
+  test:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install test deps
+        run: |
+          sudo apt-get update
+          xargs -a build-deps.txt sudo apt-get install -y
+          sudo apt-get install -y gcovr
+      - name: Configure (Debug + sanitizers + coverage)
+        run: |
+          cmake -S . -B build-test \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_TESTING=ON \
+            -DENABLE_SANITIZERS=ON \
+            -DENABLE_COVERAGE=ON
+      - name: Build tests
+        run: cmake --build build-test
+      - name: Run CTest (JUnit)
+        run: ctest --test-dir build-test --output-on-failure --output-junit junit.xml
+      - name: Coverage threshold
+        run: gcovr --root . --filter 'src/core' --fail-under-line 70 build-test
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: build-test/junit.xml
+
+  package:
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install packaging deps
+        run: |
+          sudo apt-get update
+          xargs -a build-deps.txt sudo apt-get install -y
+          sudo apt-get install -y dpkg-dev lintian
+      - name: Build deb
+        run: ./build_deb.sh
+      - name: Lintian (fail on errors)
+        run: lintian --fail-on error dist/*.deb
+      - name: Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: dist/*.deb
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify VERSION matches tag
+        run: |
+          test "$(cat VERSION)" = "${GITHUB_REF_NAME#v}" || {
+            echo "VERSION ($(cat VERSION)) != tag (${GITHUB_REF_NAME#v})";
+            exit 1;
+          }
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb
+          path: dist
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.deb --generate-notes
