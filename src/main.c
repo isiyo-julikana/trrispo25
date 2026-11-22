@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core.h"
+#include "server.h"
 
 #ifndef APP_VERSION
 #define APP_VERSION "unknown"
@@ -34,7 +35,7 @@ static void print_usage(FILE *out, const char *prog) {
             "  --output PATH   Выходной файл для compress (по умолчанию <file>.zst).\n"
             "  --help          Показать справку и выйти.\n"
             "  --version       Показать версию и выйти.\n",
-            prog, prog, prog, prog,
+            prog, prog, prog, prog, prog,
             core_max_level(), core_max_level());
 }
 
