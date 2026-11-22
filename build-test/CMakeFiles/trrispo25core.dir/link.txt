@@ -1,0 +1,2 @@
+/usr/bin/ar qc libtrrispo25core.a CMakeFiles/trrispo25core.dir/src/core.c.o CMakeFiles/trrispo25core.dir/src/server.c.o
+/usr/bin/ranlib libtrrispo25core.a

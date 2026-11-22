@@ -1,0 +1,95 @@
+Start testing: Nov 20 17:11 MSK
+----------------------------------------------------------
+1/3 Testing: core
+1/3 Test: core
+Command: "/home/buzz071/projects/trrispo25/build-test/test_core"
+Directory: /home/buzz071/projects/trrispo25/build-test
+"core" start time: Nov 20 17:11 MSK
+Output:
+----------------------------------------------------------
+[ RUN  ] max_level
+[ PASS ] max_level
+[ RUN  ] compress_basic
+[ PASS ] compress_basic
+[ RUN  ] higher_level_not_larger
+[ PASS ] higher_level_not_larger
+[ RUN  ] compress_max_level
+[ PASS ] compress_max_level
+[ RUN  ] invalid_level_low
+[ PASS ] invalid_level_low
+[ RUN  ] invalid_level_high
+[ PASS ] invalid_level_high
+[ RUN  ] null_src
+[ PASS ] null_src
+[ RUN  ] null_dst
+[ PASS ] null_dst
+[ RUN  ] null_dst_size
+[ PASS ] null_dst_size
+[ RUN  ] null_elapsed
+[ PASS ] null_elapsed
+[ RUN  ] empty_input
+[ PASS ] empty_input
+[ RUN  ] free_after_success
+[ PASS ] free_after_success
+
+12/12 tests passed
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"core" end time: Nov 20 17:11 MSK
+"core" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/3 Testing: cli_version
+2/3 Test: cli_version
+Command: "/home/buzz071/projects/trrispo25/build-test/trrispo25" "--version"
+Directory: /home/buzz071/projects/trrispo25/build-test
+"cli_version" start time: Nov 20 17:11 MSK
+Output:
+----------------------------------------------------------
+trrispo25 0.1.0
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Pass Reason:
+Required regular expression found. Regex=[0.1.0]
+"cli_version" end time: Nov 20 17:11 MSK
+"cli_version" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/3 Testing: cli_bad_args
+3/3 Test: cli_bad_args
+Command: "/home/buzz071/projects/trrispo25/build-test/trrispo25" "--no-such-option"
+Directory: /home/buzz071/projects/trrispo25/build-test
+"cli_bad_args" start time: Nov 20 17:11 MSK
+Output:
+----------------------------------------------------------
+trrispo25: unknown command '--no-such-option'
+Usage:
+  /home/buzz071/projects/trrispo25/build-test/trrispo25 --help
+  /home/buzz071/projects/trrispo25/build-test/trrispo25 --version
+  /home/buzz071/projects/trrispo25/build-test/trrispo25 compress <file> [--level N] [--output <path>]
+  /home/buzz071/projects/trrispo25/build-test/trrispo25 benchmark <file> [--max-level N]
+
+Commands:
+  compress     Сжать <file> на заданном уровне zstd.
+               Уровень по умолчанию — из /etc/trrispo25/trrispo25.conf.
+  benchmark    Сжать <file> на каждом уровне 1..N и напечатать
+               таблицу «уровень — размер — время».
+
+Options:
+  --level N       Уровень сжатия для compress (1..22).
+  --max-level N   Максимальный уровень для benchmark (по умолчанию 22).
+  --output PATH   Выходной файл для compress (по умолчанию <file>.zst).
+  --help          Показать справку и выйти.
+  --version       Показать версию и выйти.
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"cli_bad_args" end time: Nov 20 17:11 MSK
+"cli_bad_args" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Nov 20 17:11 MSK
