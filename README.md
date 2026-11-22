@@ -2,12 +2,15 @@
 
 Сравнение уровней сжатия zstd — консольная утилита на C11.
 
+[![ci](https://github.com/isiyo-julikana/trrispo25/actions/workflows/ci.yml/badge.svg)](https://github.com/isiyo-julikana/trrispo25/actions/workflows/ci.yml)
+
 - **Вариант:** 25
 - **Программа:** сравнение уровней сжатия
 - **Обязательные функции:** сжатие `zstd` с заданным уровнем; таблица «уровень — размер — время»
 - **Библиотека:** `libzstd-dev` (runtime — `libzstd1`)
 - **Дисциплина:** Технологии распространения, развертывания и сопровождения программного обеспечения
-- **Текущая версия:** см. файл [`VERSION`](VERSION) (на ПР 1 — `0.1.0`)
+- **Текущая версия:** см. файл [`VERSION`](VERSION)
+
 
 ## Назначение
 
@@ -25,6 +28,7 @@
 `/etc/trrispo25/trrispo25.conf`; ключ `--level` на командной строке имеет
 приоритет над конфигом. Отсутствие файла конфигурации не является ошибкой.
 
+
 ## Требования
 
 - Ubuntu 24.04 LTS (или Debian) — нативная система, виртуальная машина или WSL 2;
@@ -37,6 +41,7 @@
 sudo apt update
 sudo xargs -a build-deps.txt apt install -y
 ```
+
 
 ## Сборка
 
@@ -51,17 +56,33 @@ cmake --build build
 и попадает в программу через CMake (макрос `APP_VERSION`), а не записывается
 в исходный код.
 
-Проверка:
+
+## Тестирование
+
+Тесты написаны на C с использованием собственного макроса проверки и
+зарегистрированы в CTest. Покрыты обе функции ядра (`core_compress_buffer`,
+`core_max_level`), включая граничные случаи (пустой ввод, некорректные уровни,
+нулевые указатели), а также CLI-интерфейс.
+
+Для запуска тестов локально с инструментами AddressSanitizer, UndefinedBehaviorSanitizer
+и сбором покрытия используется отдельный каталог сборки `build-test`:
 
 ```bash
-./build/trrispo25 --version
-# trrispo25 0.1.0
+cmake -S . -B build-test \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DBUILD_TESTING=ON \
+  -DENABLE_SANITIZERS=ON \
+  -DENABLE_COVERAGE=ON
 
-./build/trrispo25 --help
+cmake --build build-test
+ctest --test-dir build-test --output-on-failure
 ```
 
-Сборка проходит без предупреждений компилятора при флагах
-`-Wall -Wextra -Wpedantic`.
+Проверка порога покрытия (не менее 70% строк модуля `core`):
+
+```bash
+gcovr --root . --filter 'src/core' --fail-under-line 70 build-test
+```
 
 ## Сборка deb-пакета
 
@@ -82,6 +103,7 @@ cmake --build build
 6. собирает пакет в `dist/`.
 
 Результат: `dist/trrispo25_<version>_<arch>.deb`.
+
 
 ## Установка
 
@@ -106,6 +128,7 @@ ldd /usr/bin/trrispo25 | grep zstd
 - `/usr/share/doc/trrispo25/copyright`, `/usr/share/doc/trrispo25/changelog.gz` —
   документация.
 
+
 ### Удаление
 
 ```bash
@@ -115,6 +138,50 @@ sudo apt remove trrispo25
 # удалить и конфигурацию
 sudo apt purge trrispo25
 ```
+
+
+## Непрерывная интеграция (CI)
+
+В репозитории настроен конвейер GitHub Actions (`.github/workflows/ci.yml`),
+который запускается при пуше в любую ветку, при создании Pull Request в `master`,
+а также при отправке тегов `v*`.
+
+Конвейер состоит из трёх строго последовательных этапов (падение любого предыдущего
+останавливает следующие):
+
+1. **build** — релизная сборка с флагом `-Werror` (предупреждения компилятора
+   считаются ошибками) и статический анализ кода `cppcheck`.
+2. **test** — отладочная сборка с AddressSanitizer, UndefinedBehaviorSanitizer и
+   покрытием, запуск `CTest`, проверка покрытия `gcovr` (порог 70%). Отчёт о
+   тестах (`junit.xml`) сохраняется как артефакт даже при падении.
+3. **package** — сборка `.deb` тем же скриптом `build_deb.sh`, что и локально.
+   Проверка `lintian` (остановка при ошибках `E:`). Готовый пакет сохраняется
+   как артефакт.
+
+Ветка `master` защищена: слияние Pull Request невозможно без успешного
+прохождения всех трёх проверок.
+
+
+## Выпуск релиза
+
+Релиз создаётся автоматически при отправке тега, совпадающего с версией в файле `VERSION`:
+
+```bash
+# Убедитесь, что версия в VERSION обновлена и слита в master
+echo "0.2.0" > VERSION
+git add VERSION
+git commit -m "Обновлена версия до 0.2.0"
+
+# Создайте и отправьте тег
+git tag -a v0.2.0 -m "Релиз 0.2.0"
+git push origin v0.2.0
+```
+
+При отправке тега запускается дополнительная задача **release**, которая:
+1. Проверяет, что тег совпадает с содержимым `VERSION` (защита от опечаток).
+2. Скачивает собранный на этапе `package` `.deb`-пакет.
+3. Создает GitHub Release с этим пакетом в разделе Assets.
+
 
 ## Запуск
 
@@ -161,17 +228,32 @@ trrispo25 compress <file> [--level N] [--output <path>]
 - [x] Deb-пакет собирается одной командой (`build_deb.sh`), `Architecture`
       и `Depends` определяются автоматически (`dpkg --print-architecture`,
       `dpkg-shlibdeps`), конфигурация объявлена в `DEBIAN/conffiles`;
-- [x] `lintian` — без ошибок (`E:`).
+- [x] Конфигурация объявлена в `DEBIAN/conffiles`; `lintian` — без ошибок.
 
-ПР 2, 3, 4 будут отмечены тегами `v0.2.0`, `v0.3.0`, `v1.0.0` по мере сдачи.
+### ПР 2 — непрерывная интеграция (тег `v0.2.0`)
+
+- [x] Написаны unit-тесты для `core` (12 проверок) и CLI-тесты (2 проверки);
+- [x] Тесты зарегистрированы в CTest, собираются и проходят с санитайзерами (ASan, UBSan);
+- [x] Покрытие строк `core` превышает 70% (проверяется через `gcovr`);
+- [x] Настроен CI-конвейер (GitHub Actions): последовательные этапы `build → test → package`;
+- [x] Сборка в CI выполняется с `-Werror`, добавлен статический анализатор `cppcheck`;
+- [x] Отчёт о тестах (JUnit) и `.deb`-пакет сохраняются как артефакты CI;
+- [x] Включена защита ветки `master` (слияние PR без зелёного CI запрещено);
+- [x] Настроен автоматический выпуск: по тегу создается GitHub Release с `.deb` и
+      проверкой соответствия `VERSION` и тега.
+
+### ПР 3, 4 будут отмечены тегами  `v0.3.0`, `v1.0.0` по мере сдачи.
 
 ## Структура репозитория
 
 ```text
 trrispo25/
+├── .github/
+│   └── workflows/
+│       └── ci.yml          # CI-конвейер
 ├── .gitignore
 ├── VERSION                 # номер версии — единственный источник
-├── build-deps.txt          # пакеты, нужные для сборки
+├── build-deps.txt          # пакеты для сборки и тестов
 ├── README.md
 ├── CMakeLists.txt
 ├── build_deb.sh            # сборка deb-пакета одной командой
@@ -179,6 +261,8 @@ trrispo25/
 │   ├── core.h
 │   ├── core.c              # логика: сжатие zstd, замер времени
 │   └── main.c              # CLI: разбор аргументов, файловый I/O
+├── tests/
+│   └── test_core.c         # unit-тесты ядра
 └── packaging/
     ├── trrispo25.conf      # /etc/trrispo25/trrispo25.conf
     ├── copyright
