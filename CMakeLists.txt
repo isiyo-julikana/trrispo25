@@ -9,6 +9,7 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZSTD REQUIRED IMPORTED_TARGET libzstd)
+pkg_check_modules(MHD REQUIRED IMPORTED_TARGET libmicrohttpd)
 
 option(ENABLE_SANITIZERS "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(ENABLE_COVERAGE   "Build with gcov coverage instrumentation"               OFF)
@@ -23,9 +24,9 @@ if(ENABLE_COVERAGE)
     add_link_options(--coverage)
 endif()
 
-add_library(trrispo25core STATIC src/core.c)
+add_library(trrispo25core STATIC src/core.c src/server.c)
+target_link_libraries(trrispo25core PUBLIC PkgConfig::ZSTD PkgConfig::MHD)
 target_include_directories(trrispo25core PUBLIC src)
-target_link_libraries(trrispo25core PUBLIC PkgConfig::ZSTD)
 
 add_executable(trrispo25 src/main.c)
 target_compile_definitions(trrispo25 PRIVATE APP_VERSION="${PROJECT_VERSION}")
