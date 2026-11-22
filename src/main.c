@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core.h"
+#include "server.h"
 
 #ifndef APP_VERSION
 #define APP_VERSION "unknown"
@@ -20,7 +21,8 @@ static void print_usage(FILE *out, const char *prog) {
             "  %s --version\n"
             "  %s compress <file> [--level N] [--output <path>]\n"
             "  %s benchmark <file> [--max-level N]\n"
-            "\n"
+            "  %s serve [port]      Запустить HTTP-сервер (по умолчанию порт 8080).\n"
+	    "\n"
             "Commands:\n"
             "  compress     Сжать <file> на заданном уровне zstd.\n"
             "               Уровень по умолчанию — из " DEFAULT_CONFIG_PATH ".\n"
@@ -33,7 +35,7 @@ static void print_usage(FILE *out, const char *prog) {
             "  --output PATH   Выходной файл для compress (по умолчанию <file>.zst).\n"
             "  --help          Показать справку и выйти.\n"
             "  --version       Показать версию и выйти.\n",
-            prog, prog, prog, prog,
+            prog, prog, prog, prog, prog,
             core_max_level(), core_max_level());
 }
 
@@ -343,7 +345,14 @@ int main(int argc, char **argv) {
     if (strcmp(cmd, "benchmark") == 0) {
         return do_benchmark(argc - 1, argv + 1);
     }
- 
+    if (strcmp(cmd, "serve") == 0) {
+    int port = 8080;
+        if (argc >= 3) {
+        port = atoi(argv[2]);
+        	if (port <= 0) port = 8080;
+    }
+    return run_server(port);
+}
     fprintf(stderr, "trrispo25: unknown command '%s'\n", cmd);
     print_usage(stderr, argv[0]);
     return 1;

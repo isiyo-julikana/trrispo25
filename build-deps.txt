@@ -2,6 +2,7 @@ build-essential
 cmake
 pkgconf
 libzstd-dev
+libmicrohttpd-dev
 dpkg-dev
 lintian
 gcovr
