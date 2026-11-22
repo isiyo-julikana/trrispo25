@@ -84,6 +84,10 @@ static enum MHD_Result request_handler(void *cls,
         return answer_health(connection);
     }
 
+    if (strcmp(url, "/ready") == 0 && strcmp(method, "GET") == 0) {
+        return answer_health(connection); 
+    }
+
     if (strcmp(url, "/api/compress") == 0 && strcmp(method, "POST") == 0) {
         // Если есть тело запроса, "съедаем" его
         if (*upload_data_size > 0) {
