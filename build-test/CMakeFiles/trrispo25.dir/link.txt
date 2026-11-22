@@ -1,1 +1,0 @@
-/usr/bin/cc -g -fsanitize=address,undefined --coverage CMakeFiles/trrispo25.dir/src/main.c.o -o trrispo25  libtrrispo25core.a /usr/lib/x86_64-linux-gnu/libzstd.so /usr/lib/x86_64-linux-gnu/libmicrohttpd.so 
