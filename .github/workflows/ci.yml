@@ -99,3 +99,52 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release create "$GITHUB_REF_NAME" dist/*.deb --generate-notes
+
+  deploy:
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deb
+          path: dist
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract version and short SHA
+        id: vars
+        run: |
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+          echo "SHORT_SHA=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_ENV
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/trrispo25:${{ env.VERSION }} \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/trrispo25:${{ env.SHORT_SHA }} \
+            .
+
+      - name: Smoke test
+        run: |
+          docker run -d --name smoke -p 8080:8080 -e APP_API_TOKEN=ci ${{ secrets.DOCKERHUB_USERNAME }}/trrispo25:${{ env.VERSION }}
+          sleep 5
+          curl -fs http://localhost:8080/health
+          curl -fs -X POST -H "X-Api-Token: ci" http://localhost:8080/api/compress?level=3
+          docker stop smoke
+          docker rm smoke
+
+      - name: Push image to Docker Hub
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/trrispo25:${{ env.VERSION }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/trrispo25:${{ env.SHORT_SHA }}
