@@ -1,6 +1,6 @@
 # trrispo25
 
-Сравнение уровней сжатия zstd — консольная утилита на C11  поддержкой HTTP-сервера.
+Сравнение уровней сжатия zstd — консольная утилита на C11  поддержкой HTTP-сервера, упакованная в Docker и готовная к развертыванию в Kubernetes.
 
 [![ci](https://github.com/isiyo-julikana/trrispo25/actions/workflows/ci.yml/badge.svg)](https://github.com/isiyo-julikana/trrispo25/actions/workflows/ci.yml)
 
@@ -16,7 +16,8 @@
 
 Программа `trrispo25` сжимает файл алгоритмом zstd на заданном уровне и умеет
 строить таблицу «уровень — размер — время», чтобы сравнить, как разные уровни
-сжатия влияют на итоговый размер и на затраченное время.
+сжатия влияют на итоговый размер и на затраченное время, а также может работать как HTTP-сервис
+для удаленного сжатия данных.
 
 Поддерживаются три подкоманды:
 
@@ -25,30 +26,22 @@
   «уровень — размер — время».
 - `serve` — запустить HTTP-сервер (по умолчанию порт 8080).
 
-## Требования
+## Сборка и тестирование
 
-- Ubuntu 24.04 LTS (или Debian) — нативная система, виртуальная машина или WSL 2;
-- GCC, CMake ≥ 3.20, `pkgconf`, заголовки `libzstd-dev`.
-
-Полный список пакетов, нужных для сборки, хранится в одном месте —
-файле [`build-deps.txt`](build-deps.txt). Установить их одной командой:
-
+Для установки зависимостей используется файл `build-deps.txt`:
 ```bash
 sudo apt update
 sudo xargs -a build-deps.txt apt install -y
 ```
 
-
-## Сборка и тестирование
-
-Из корня репозитория:
-
+**Сборка:**
 ```bash
-# Релизная сборка
 cmake -S . -B build
 cmake --build build
+```
 
-# Тестовая сборка с санитайзерами и покрытием
+**Тестирование (с санитайзерами и покрытием):**
+```bash
 cmake -S . -B build-test -DCMAKE_BUILD_TYPE=Debug \
   -DENABLE_SANITIZERS=ON -DENABLE_COVERAGE=ON -DBUILD_TESTING=ON
 cmake --build build-test
@@ -56,79 +49,57 @@ ctest --test-dir build-test --output-on-failure
 gcovr --root . --filter 'src/core' --fail-under-line 70 build-test
 ```
 
+
 ## Docker
 
 Программа упакована в Docker-образ на базе `ubuntu:24.04`. Образ собирается
-из готового `.deb`-пакета (не компилирует программу заново), работает от
-непривилегированного пользователя с UID `10001` и содержит настроенный `HEALTHCHECK`.
+из готового `.deb`-пакета, работает от непривилегированного пользователя с UID `10001` и содержит настроенный `HEALTHCHECK`.
 
-**Размер образа:** 127 MB
+**Размер образа:** ~127 MB
 
-### Сборка образа локально
-
+**Сборка и запуск локально:**
 ```bash
-# 1. Сначала собираем deb-пакет
 ./build_deb.sh
-
-# 2. Собираем Docker-образ
 docker build -t trrispo25:local .
-```
-
-### Запуск контейнера
-
-```bash
-docker run -d --name trrispo25-test -p 8080:8080 \
-  -e APP_API_TOKEN=secret \
-  trrispo25:local
-```
-
-**Переменные окружения:**
-- `APP_API_TOKEN` — токен для авторизации в API (если не задан, доступ открыт).
-
-**Порты:**
-- `8080` — HTTP-сервер.
-
-**Проверка работоспособности:**
-```bash
+docker run -d --name trrispo25-test -p 8080:8080 -e APP_API_TOKEN=secret trrispo25:local
 curl http://localhost:8080/health
-# OK
-
-curl -X POST -H "X-Api-Token: secret" http://localhost:8080/api/compress?level=5
-# Compressed with level 5
 ```
 
-## Непрерывная интеграция и деплой (CI/CD)
+## Развертывание в Kubernetes
 
-Конвейер GitHub Actions (`.github/workflows/ci.yml`) запускается при пуше в любую ветку,
-при создании Pull Request в `master`, а также при отправке тегов `v*`.
+Сервис подготовлен для работы в кластере Kubernetes (манифесты находятся в каталоге `k8s/`).
 
-Этапы выполняются строго последовательно (ошибка останавливает следующие):
-
-1. **build** — релизная сборка с `-Werror` и статический анализ `cppcheck`.
-2. **test** — тестовая сборка с ASan/UBSan, запуск `CTest`, проверка покрытия `gcovr` (порог 70%). JUnit-отчет сохраняется как артефакт.
-3. **package** — сборка `.deb` через `build_deb.sh`, проверка `lintian`, сохранение пакета как артефакта.
-4. **deploy** *(только для тегов `v*`)* — скачивает `.deb`, собирает Docker-образ, проводит smoke-тест (проверка `/health` и `/api/`) и публикует образ в Docker Hub с двумя тегами: версией и коротким хешем коммита.
-
-Ветка `master` защищена: слияние Pull Request невозможно без успешного прохождения проверок `build`, `test` и `package`.
-
-## Выпуск релиза
-
-Релиз создается автоматически при отправке тега, совпадающего с версией в `VERSION`:
-
+### Создание кластера (kind)
 ```bash
-echo "0.3.0" > VERSION
-git add VERSION
-git commit -m "Версия 0.3.0"
-git push origin master
-
-git tag -a v0.3.0 -m "Релиз 0.3.0: контейнеризация"
-git push origin v0.3.0
+kind create cluster --name tsp
+kubectl get nodes # Убедиться, что узел в статусе Ready
 ```
 
-При отправке тега запускается конвейер, который:
-1. Проверяет соответствие тега и `VERSION`.
-2. Создает GitHub Release и прикрепляет к нему `.deb`.
-3. Собирает Docker-образ, тестирует его и публикует в Docker Hub (`ваш_логин/trrispo25:0.3.0` и `ваш_логин/trrispo25:xxxxxxx`).
+### Развертывание приложения
+1. Примените Namespace, ConfigMap, Deployment и Service:
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/
+```
+
+2. Создайте Secret с токеном (не хранится в репозитории):
+```bash
+kubectl -n trrispo25 create secret generic trrispo25-secret \
+  --from-literal=APP_API_TOKEN=super-secret-token
+```
+
+3. Проверьте, что поды запустились (должно быть 2 реплики):
+```bash
+kubectl -n trrispo25 get pods
+```
+
+4. Для доступа к сервису локально используйте port-forward:
+```bash
+kubectl -n trrispo25 port-forward svc/trrispo25 8080:80
+```
+Теперь сервис доступен по адресу `http://localhost:8080`.
+
+---
 
 ## Что сделано в каждой работе
 
@@ -168,7 +139,13 @@ git push origin v0.3.0
 - [x] Настроены секреты Docker Hub, образ публикуется с двумя тегами (версия и хеш).
 
 
-### ПР 4 будут отмечены тегами   `v1.0.0` по мере сдачи.
+### ПР 4 — развертывание в Kubernetes (тег `v1.0.0`)
+- [x] Созданы декларативные манифесты (Namespace, ConfigMap, Deployment, Service) в каталоге `k8s/`.
+- [x] Настроены пробы `liveness` (`/health`) и `readiness` (`/ready`), заданы лимиты ресурсов, включен `runAsNonRoot`.
+- [x] Настроена стратегия `RollingUpdate` с `maxUnavailable: 0` для обновления без простоя.
+- [x] Секреты (токен) передаются через `Secret`, создаваемый командой (нет в репозитории).
+- [x] В README добавлен подробный раздел «Эксплуатация» (7 сценариев сопровождения).
+
 
 ## Структура репозитория
 
@@ -177,27 +154,32 @@ trrispo25/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml          # CI/CD-конвейер
+├── k8s/                    # Манифесты Kubernetes
+│   ├── namespace.yaml
+│   ├── configmap.yaml
+│   ├── deployment.yaml
+│   └── service.yaml
 ├── .gitignore
-├── .dockerignore           # исключения для контекста сборки Docker
-├── Dockerfile              # инструкция сборки контейнера
-├── VERSION                 # номер версии — единственный источник
-├── build-deps.txt          # пакеты для сборки и тестов
+├── .dockerignore
+├── Dockerfile
+├── VERSION
+├── build-deps.txt
 ├── README.md
 ├── CMakeLists.txt
-├── build_deb.sh            # сборка deb-пакета одной командой
+├── build_deb.sh
 ├── src/
 │   ├── core.h
-│   ├── core.c              # логика: сжатие zstd, замер времени
+│   ├── core.c
 │   ├── server.h
-│   ├── server.c            # HTTP-сервер на libmicrohttpd
-│   └── main.c              # CLI: разбор аргументов, файловый I/O
+│   ├── server.c
+│   └── main.c
 ├── tests/
-│   └── test_core.c         # unit-тесты ядра
+│   └── test_core.c
 └── packaging/
-    ├── trrispo25.conf      # /etc/trrispo25/trrispo25.conf
+    ├── trrispo25.conf
     ├── copyright
     ├── changelog
     └── DEBIAN/
-        ├── control         # шаблон с @VERSION@, @ARCH@, @DEPENDS@
+        ├── control
         └── conffiles
 ```

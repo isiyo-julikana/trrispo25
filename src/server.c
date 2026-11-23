@@ -96,7 +96,26 @@ static enum MHD_Result request_handler(void *cls,
         }
         // Тело обработано, отправляем ответ (передаем только connection)
         return answer_compress(connection);
-    }
+
+    if (strcmp(url, "/version") == 0 && strcmp(method, "GET") == 0) {
+        // Получаем имя пода (в Kubernetes оно автоматически пишется в HOSTNAME)
+        const char *hostname = getenv("HOSTNAME");
+        if (!hostname) hostname = "unknown-pod";
+
+        char response[256];
+        // Выводим версию и имя пода
+        snprintf(response, sizeof(response), "Version: 1.0.0, Pod: %s\n", hostname);
+        
+        struct MHD_Response *resp = MHD_create_response_from_buffer(
+            strlen(response), (void*)response, MHD_RESPMEM_MUST_COPY);
+        if (!resp) return MHD_NO;
+        MHD_add_response_header(resp, "Content-Type", "text/plain");
+        enum MHD_Result ret = MHD_queue_response(connection, MHD_HTTP_OK, resp);
+        MHD_destroy_response(resp);
+        return ret;
+    }    
+
+}
 
     const char *not_found = "Not Found";
     struct MHD_Response *resp = MHD_create_response_from_buffer(
