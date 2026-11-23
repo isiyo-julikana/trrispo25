@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: trrispo25
+  namespace: trrispo25
+spec:
+  selector:
+    app: trrispo25
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP
